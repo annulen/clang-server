@@ -33,6 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sstream>
+
+using namespace std;
 
 int create_named_pipe(char **s)
 {
@@ -56,7 +59,7 @@ int main(int argc, char **argv)
     int res;
     pid_t serverpid;
     char *pipename;
-    char *makecmd;
+    const char *makecmd;
     char defaultmake[] = "make";
     const char clangservercmd[] = "clang-server";
 
@@ -68,9 +71,10 @@ int main(int argc, char **argv)
                    argv[0]);
             return 0;
         }
-        makecmd = argv[1];
+        ++argv;
+        --argc;
     } else {
-        makecmd = defaultmake;
+        argv[0] = defaultmake;
     }
     
     // Create temporary pipe
@@ -90,20 +94,31 @@ int main(int argc, char **argv)
     serverpid = fork();
     if(serverpid == 0) {
         printf("Forked!\n");
+        usleep(4000000);
         if(execlp(clangservercmd, clangservercmd, (char*)0) == -1) {
-            printf("Failed to start %s: %s\n", clangservercmd, strerror(errno));
+            fprintf(stderr, "Failed to start %s: %s\n", clangservercmd, strerror(errno));
         }
     } else {
         // Run make utility
-        res = system(makecmd);
-        if(res > 0) {
-            fprintf(stderr, "%s failed!\n", makecmd);
-            // Shutdown clang-server
-            kill(serverpid, SIGTERM);
-            // Remove pipe
-            remove(pipename);
-            return 5;
+        ostringstream cmd;
+        for(int i=0; i<argc; ++i) {
+            cmd << argv[i] << ' ';
         }
+        makecmd = cmd.str().c_str();
+        printf("%s\n", makecmd);
+        res = system(makecmd);
+        if(res != 0) {
+            fprintf(stderr, "%s failed (code %d)!\n", makecmd, res);
+        }
+        usleep(6000000);
+        // Shutdown clang-server
+        kill(serverpid, SIGTERM);
+        // Remove pipe
+        res = remove(pipename);
+        if(res != 0) {
+            fprintf(stderr, "Cannot remove temporary pipe %s\n", pipename);
+        }
+        return 5;
     }
     free(pipename);
     return 0;

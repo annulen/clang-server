@@ -24,14 +24,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
+#include <limits.h>
+#include <string.h>
+#include <sstream>
+
+using namespace std;
 
 int main(int argc, char **argv)
 {
     FILE *serverpipe;
+    ostringstream out;
+    const char *cmd;
 
-    printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
+    printf("Client start\n");
+    //printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
     serverpipe = fopen(getenv("CLANGSERVERPIPE"), "w");
+    if(!serverpipe) {
+        printf("Fatal error: CLANGSERVERPIPE not specified!\n");
+        return 1;
+    }
+    printf("Client opened pipe\n");
+    for(int i=0; i<argc; ++i) {
+        out << argv[i] << ' ';
+    }
+    cmd = out.str().c_str();
+    if(strlen(cmd) > PIPE_BUF) {
+        printf("Fatal error: %s command line is longer than %d characters\n"
+               "Cannot perform atomic write to Unix pipe\n",
+               argv[0], PIPE_BUF);
+        return 2;
+    }
+    fprintf(serverpipe, "%s\n", cmd);
+    fclose(serverpipe);
+    printf("Client exit\n");
     return 0;
 }
