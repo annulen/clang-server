@@ -9,8 +9,8 @@ all: clang-server clang-client clang++-client clang-make
 clang-server: clang-server.cpp
 	$(CXX) $(CXXFLAGS) clang-server.cpp -o $@
 
-clang-client: clang-client.cpp
-	$(CXX) $(CXXFLAGS) clang-client.cpp -o $@
+clang-client: clang-client.c
+	$(CC) $(CFLAGS) clang-client.c -o $@
 
 clang++-client:
 	ln -s clang-client $@
