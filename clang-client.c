@@ -25,54 +25,63 @@
  */
 
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
+#include <sys/file.h>
 #include <unistd.h>
-#include <signal.h>
 
-void sigterm_handler(int sig) {
-    printf("Client exit\n");
-    signal(sig, SIG_IGN);
+#define BUF_SIZE 10240
+
+void sig_handler(int sig) {
+    printf("Client %d exit\n", getpid());
+    signal(SIGUSR1, sig_handler);
 }
 
 int main(int argc, char **argv)
 {
-    FILE *serverpipe;
-    char cmd[PIPE_BUF];
+    int fifo, lock;
+    char cmd[BUF_SIZE];
+    int need_write_lock = 1;
+    pid_t mypid;
     int i;
 
-    printf("Client start\n");
-    sprintf(cmd, "%d;", getpid());
-    if(strstr(argv[0], "clang++"))
-        strcat(cmd, "++");
-    strcat(cmd, ";");
-    for(i=1; i<argc; ++i) {
-        if(strlen(cmd)+strlen(argv[i])+1 > PIPE_BUF) {
-            printf("Fatal error: too many args!\n");
+    signal(SIGUSR1, sig_handler);
+    mypid = getpid();
+    fprintf(stderr, "Client %d start\n", mypid);
+    sprintf(cmd, "%d", mypid);
+    for(i=0; i<argc; ++i) {
+        if(strlen(cmd)+strlen(argv[i])+1 > BUF_SIZE) {
+            fprintf(stderr, "Fatal error: argument list is too long!\n");
             return 2;
         }
-        strcat(cmd, argv[i]);
         strcat(cmd, ";");
+        strcat(cmd, argv[i]);
     }
-    
+    strcat(cmd, "\n");
+
     //printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
-    serverpipe = fopen(getenv("CLANGSERVERPIPE"), "w");
-    if(!serverpipe) {
-        printf("Fatal error: CLANGSERVERPIPE not specified!\n");
+    if((fifo = open(getenv("CLANGSERVERPIPE"), O_WRONLY)) == -1) {
+        fprintf(stderr, "Fatal error: cannot open CLANGSERVERPIPE!\n");
         return 1;
     }
-    printf("Client opened pipe\n");
-/*    if(strlen(cmd) > PIPE_BUF) {
-        printf("Fatal error: %s command line is longer than %d characters\n"
-               "Cannot perform atomic write to Unix pipe\n",
-               argv[0], PIPE_BUF);
-        return 2;
-    }*/
-    fprintf(serverpipe, "%s\n", cmd);
-    fclose(serverpipe);
-    signal(SIGTERM, sigterm_handler);
+    
+    /* Need atomic write! */
+    if(flock(fifo, LOCK_EX) == -1) {
+        fprintf(stderr, "Fatal error: cannot lock pipe!\n");
+        return 3;
+    }
+    fprintf(stderr, "Client %d lock\n", mypid);
+    write(fifo, cmd, strlen(cmd));
+
+    if(flock(fifo, LOCK_UN) == -1) {
+        fprintf(stderr, "Fatal error: cannot unlock pipe!\n");
+        return 4;
+    }
+    fprintf(stderr, "Client %d unlock\n", mypid);
+    close(fifo);
+    //fprintf(stderr, "Client %d closed pipe\n", mypid);
     pause();
     return 0;
 }

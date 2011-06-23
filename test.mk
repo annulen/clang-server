@@ -1,4 +1,4 @@
-all: tgt1 tgt2 tgt3 tgt4 tgt5 tgt6 tgt7 tgt8 tgt9
+all: tgt1 tgt2 tgt3 tgt4 tgt5 tgt6 tgt7 tgt8 
 
 tgt1:
 	clang-client ~/sdsd "rtrtrt ghhghg" ujkjkj -c qwqwq 1 
@@ -6,7 +6,7 @@ tgt1:
 tgt2:
 	clang-client dsd trtrt hhghg jkjkj -c wqwq 2
 
-tgt3:
+tgt3: tgt9
 	clang-client sdsd rtrtrt ghhghg ujkjkj -c qwqwq 3 
 
 tgt4:

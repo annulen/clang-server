@@ -36,6 +36,7 @@
 
 using namespace std;
 
+#define BUF_SIZE 10240
 const int MAX_WAIT = 600;
 
 void sigterm_handler(int sig) {
@@ -75,16 +76,17 @@ void process(char *str)
     printf("Server: %s", str);
     char *token = strtok(str, ";");
     if(token) {
-//    printf("Server: killing %s\n", token);
-        kill(atol(token), SIGTERM);
+        printf("Server: killing %s\n", token);
+        kill(atol(token), SIGUSR1);
     }
+    usleep(10000);
 }
 
 int main(int argc, char **argv)
 {
     FILE *input;
     string args;
-    char buf[PIPE_BUF];
+    char buf[BUF_SIZE];
     char c;
 
     //printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
@@ -101,7 +103,7 @@ int main(int argc, char **argv)
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
     while(true) {
-        while(fgets(buf, PIPE_BUF, input)) 
+        while(fgets(buf, BUF_SIZE, input)) 
             process(buf);
         //while ((c = fgetc (input)) != EOF)
           //  putchar(c);
