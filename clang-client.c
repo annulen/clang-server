@@ -28,6 +28,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <signal.h>
+
+void sigterm_handler(int sig) {
+    printf("Client exit\n");
+    signal(sig, SIG_IGN);
+}
 
 int main(int argc, char **argv)
 {
@@ -36,6 +44,19 @@ int main(int argc, char **argv)
     int i;
 
     printf("Client start\n");
+    sprintf(cmd, "%d;", getpid());
+    if(strstr(argv[0], "clang++"))
+        strcat(cmd, "++");
+    strcat(cmd, ";");
+    for(i=1; i<argc; ++i) {
+        if(strlen(cmd)+strlen(argv[i])+1 > PIPE_BUF) {
+            printf("Fatal error: too many args!\n");
+            return 2;
+        }
+        strcat(cmd, argv[i]);
+        strcat(cmd, ";");
+    }
+    
     //printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
     serverpipe = fopen(getenv("CLANGSERVERPIPE"), "w");
     if(!serverpipe) {
@@ -43,14 +64,6 @@ int main(int argc, char **argv)
         return 1;
     }
     printf("Client opened pipe\n");
-    for(i=0; i<argc; ++i) {
-        if(strlen(cmd)+strlen(argv[i])+1 > PIPE_BUF) {
-            printf("Fatal error: too many args!\n");
-            return 2;
-        }
-        strcat(cmd, argv[i]);
-        strcat(cmd, " ");
-    }
 /*    if(strlen(cmd) > PIPE_BUF) {
         printf("Fatal error: %s command line is longer than %d characters\n"
                "Cannot perform atomic write to Unix pipe\n",
@@ -59,7 +72,8 @@ int main(int argc, char **argv)
     }*/
     fprintf(serverpipe, "%s\n", cmd);
     fclose(serverpipe);
-    printf("Client exit\n");
+    signal(SIGTERM, sigterm_handler);
+    pause();
     return 0;
 }
 

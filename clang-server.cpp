@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <limits.h>
 #include <signal.h>
+#include <cstring>
 #include <string>
 /*#include <sys/time.h>
 #include <sys/types.h>
@@ -69,6 +70,16 @@ void sigsegv_handler(int sig) {
         printf("Данные не появились в течение 600 секунд.\n");
 }*/
 
+void process(char *str)
+{
+    printf("Server: %s", str);
+    char *token = strtok(str, ";");
+    if(token) {
+//    printf("Server: killing %s\n", token);
+        kill(atol(token), SIGTERM);
+    }
+}
+
 int main(int argc, char **argv)
 {
     FILE *input;
@@ -90,9 +101,8 @@ int main(int argc, char **argv)
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
     while(true) {
-        while(fgets(buf, PIPE_BUF, input)) {
-            printf("Server: %s", buf);
-        };
+        while(fgets(buf, PIPE_BUF, input)) 
+            process(buf);
         //while ((c = fgetc (input)) != EOF)
           //  putchar(c);
         printf("Server: EOF\n");
