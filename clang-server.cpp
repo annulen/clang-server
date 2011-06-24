@@ -30,9 +30,6 @@
 #include <signal.h>
 #include <cstring>
 #include <string>
-/*#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>*/
 
 using namespace std;
 
@@ -51,25 +48,6 @@ void sigsegv_handler(int sig) {
     // Kill all waiting clients
     exit(0);
 }
-
-/*void waitForNewData(int fd)
-{
-    fd_set rfds;
-    struct timeval tv;
-    int retval;
-
-    FD_ZERO(&rfds);
-    FD_SET(fd, &rfds);
-    tv.tv_sec = MAX_WAIT;
-    tv.tv_usec = 0;
-
-    retval = select(fd+1, &rfds, NULL, NULL, &tv);
-
-    if (retval)
-        printf("Данные доступны.\n");
-    else
-        printf("Данные не появились в течение 600 секунд.\n");
-}*/
 
 void process(char *str)
 {
@@ -96,19 +74,12 @@ int main(int argc, char **argv)
         printf("Fatal error: CLANGSERVERPIPE not specified!\n");
         return 1;
     }
-/*    do {
-        if(!fgets(buf, 1024, input))
-            return;
-    } while((c = fgetc (stream)) != EOF);*/
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
     while(true) {
         while(fgets(buf, BUF_SIZE, input)) 
             process(buf);
-        //while ((c = fgetc (input)) != EOF)
-          //  putchar(c);
         printf("Server: EOF\n");
-    //    waitForNewData(fileno(input));
         freopen(getenv("CLANGSERVERPIPE"), "r", input);
         printf("Server: Reopened\n");
     }
