@@ -43,6 +43,7 @@ int main(int argc, char **argv)
 {
     int fifo, lock;
     char cmd[BUF_SIZE];
+    char cwd[4096];
     int need_write_lock = 1;
     pid_t mypid;
     int i;
@@ -50,7 +51,12 @@ int main(int argc, char **argv)
     signal(SIGUSR1, sig_handler);
     mypid = getpid();
     fprintf(stderr, "Client %d start\n", mypid);
-    sprintf(cmd, "%d", mypid);
+    getcwd(cwd, 4096);
+    if(!cwd) {
+        fprintf(stderr, "Fatal error: cannot getcwd()!\n");
+        return 1;
+    }
+    sprintf(cmd, "%d;%s", mypid, cwd);
     for(i=0; i<argc; ++i) {
         if(strlen(cmd)+strlen(argv[i])+1 > BUF_SIZE) {
             fprintf(stderr, "Fatal error: argument list is too long!\n");
@@ -68,18 +74,21 @@ int main(int argc, char **argv)
     }
     
     /* Need atomic write! */
+/*    fprintf(stderr, "Client %d waiting lock\n", mypid);
     if(flock(fifo, LOCK_EX) == -1) {
         fprintf(stderr, "Fatal error: cannot lock pipe!\n");
         return 3;
     }
-    fprintf(stderr, "Client %d lock\n", mypid);
+    fprintf(stderr, "Client %d lock\n", mypid);*/
     write(fifo, cmd, strlen(cmd));
+//    fprintf(stderr, "Client %d sleep\n", mypid);
+//    usleep(1000000);
 
-    if(flock(fifo, LOCK_UN) == -1) {
+/*    if(flock(fifo, LOCK_UN) == -1) {
         fprintf(stderr, "Fatal error: cannot unlock pipe!\n");
         return 4;
     }
-    fprintf(stderr, "Client %d unlock\n", mypid);
+    fprintf(stderr, "Client %d unlock\n", mypid);*/
     close(fifo);
     //fprintf(stderr, "Client %d closed pipe\n", mypid);
     pause();
