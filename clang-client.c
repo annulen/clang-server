@@ -89,9 +89,9 @@ int main(int argc, char **argv)
         return 4;
     }
     fprintf(stderr, "Client %d unlock\n", mypid);*/
+    pause();
     close(fifo);
     //fprintf(stderr, "Client %d closed pipe\n", mypid);
-    pause();
     return 0;
 }
 
