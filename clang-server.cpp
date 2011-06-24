@@ -30,9 +30,107 @@
 #include <signal.h>
 #include <cstring>
 #include <string>
+#include <pthread.h>
+#include <vector>
 
-using namespace std;
+class CompilationThread
+{
+public:
+    CompilationThread()
+    {
+    }
 
+    ~CompilationThread()
+    {
+        free(m_str);
+    }
+
+    void run()
+    {
+//        printf("Thread %ld: compilation %d %s\n", m_thread, m_clientPid, m_str);
+        printf("Thread %ld: compiling %d %d\n", m_thread, m_clientPid, m_argc);
+        usleep(1000000);
+        finalize();
+    }
+
+    bool start(char *str)          
+    { 
+        if(!setStr(str)) {
+            printf("Parsing error in %s", str);
+            return false;
+        }
+        return pthread_create(&m_thread, NULL, CompilationThread::thread_func, (void*)this) == 0;
+    }
+
+    int wait()
+    { 
+        return pthread_join(m_thread, NULL); 
+    }
+
+    void finalize()
+    {
+        if(m_clientPid > 0) {
+            printf("Server: killing %d\n", m_clientPid);
+            kill(m_clientPid, SIGUSR1);
+        }
+        free(m_str);
+        m_str = 0;
+        delete [] m_argv;
+        m_argv = 0;
+    }
+
+private:
+    CompilationThread(const CompilationThread& copy); // copy constructor denied
+    static void *thread_func(void *d)   
+    { 
+        ((CompilationThread *)d)->run(); 
+    }
+    
+    bool setStr(char *str)
+    {
+        if(!str)
+            return false;
+        //printf("Thread %d: setStr %s\n", m_thread, str);
+        m_str = strdup(str);
+        if(!m_str)
+            return false;
+        int i = 0;
+        char *argc_start = 0;
+        for(char *c = m_str; *c != '\0'; ++c) {
+            if(*c != ';')
+                continue;
+            *c = '\0';
+            if(i == 0) {
+                m_clientPid = atoi(m_str);
+                if(m_clientPid <= 0)
+                    return false;
+                m_cwd = c+1;
+            } else if(i == 1) {
+                argc_start = c+1;
+            } else if(i == 2) {
+                m_argc = atoi(argc_start);
+                if(!m_argc)
+                    return false;
+                m_argv = new char*[m_argc];
+                m_argv[0] = c+1;
+            } else {
+                // i >= 3, m_argv[0] was assigned above
+                m_argv[i-2] = c+1;
+            }            
+            ++i;
+        }
+//        printf("Thread %ld: %d, %s, %d, %s, %s, %s\n", m_thread, m_clientPid, m_cwd, m_argc, m_argv[0], m_argv[1], m_argv[m_argc-1]);
+        return true;
+    }
+    
+    pthread_t m_thread;
+    char *m_str;
+    int m_clientPid;
+    char *m_cwd;
+    int m_argc;
+    char **m_argv;
+};
+ 
 #define BUF_SIZE 10240
 const int MAX_WAIT = 600;
 
@@ -49,23 +147,13 @@ void sigsegv_handler(int sig) {
     exit(0);
 }
 
-void process(char *str)
-{
-    printf("Server: %s", str);
-    char *token = strtok(str, ";");
-    if(token) {
-        printf("Server: killing %s\n", token);
-        kill(atol(token), SIGUSR1);
-    }
-    usleep(10000);
-}
-
 int main(int argc, char **argv)
 {
     FILE *input;
-    string args;
     char buf[BUF_SIZE];
     char c;
+    std::vector<CompilationThread*> compileThreads;
+
 
     //printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
     printf("Server start\n");
@@ -76,9 +164,18 @@ int main(int argc, char **argv)
     }
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
+    compileThreads.reserve(16);
     while(true) {
-        while(fgets(buf, BUF_SIZE, input)) 
-            process(buf);
+        while(fgets(buf, BUF_SIZE, input)) {
+            CompilationThread *thread = new CompilationThread;
+            if(!thread->start(buf)) {
+                printf("Server: Failed to start compilation!\n");
+                thread->finalize();
+                delete thread;
+            } else {
+                compileThreads.push_back(thread);
+            }
+        }
         printf("Server: EOF\n");
         freopen(getenv("CLANGSERVERPIPE"), "r", input);
         printf("Server: Reopened\n");
@@ -88,3 +185,4 @@ int main(int argc, char **argv)
     printf("Server stop\n");
     return 0;
 }
+

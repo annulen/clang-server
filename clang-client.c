@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Fatal error: cannot getcwd()!\n");
         return 1;
     }
-    sprintf(cmd, "%d;%s", mypid, cwd);
+    sprintf(cmd, "%d;%s;%d", mypid, cwd, argc);
     for(i=0; i<argc; ++i) {
         if(strlen(cmd)+strlen(argv[i])+1 > BUF_SIZE) {
             fprintf(stderr, "Fatal error: argument list is too long!\n");

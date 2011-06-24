@@ -93,12 +93,12 @@ int main(int argc, char **argv)
     // Start clang-server
     serverpid = fork();
     if(serverpid == 0) {
-        printf("Forked!\n");
-        usleep(4000000);
+        //usleep(4000000);
         if(execlp(clangservercmd, clangservercmd, (char*)0) == -1) {
             fprintf(stderr, "Failed to start %s: %s\n", clangservercmd, strerror(errno));
         }
     } else {
+        usleep(4000000);
         // Run make utility
         ostringstream cmd;
         for(int i=0; i<argc; ++i) {
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
         if(res != 0) {
             fprintf(stderr, "%s failed (code %d)!\n", makecmd, res);
         }
-        usleep(6000000);
+        usleep(5000000);
         // Shutdown clang-server
         kill(serverpid, SIGTERM);
         // Remove pipe
