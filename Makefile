@@ -6,8 +6,8 @@ PREFIX ?= /usr/local
 
 all: clang-server clang-client clang++-client clang-make
 
-clang-server: clang-server.cpp
-	$(CXX) $(CXXFLAGS) -lpthread clang-server.cpp -o $@
+clang-server: clang-server.cpp compilationthread.cpp
+	$(CXX) $(CXXFLAGS) -lpthread clang-server.cpp compilationthread.cpp -o $@
 
 clang-client: clang-client.c
 	$(CC) $(CFLAGS) clang-client.c -o $@
