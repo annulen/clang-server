@@ -38,18 +38,19 @@ class CompilationThread
 public:
     CompilationThread()
     {
+        ++count;
     }
 
     ~CompilationThread()
     {
-        free(m_str);
+        --count;
     }
 
     void run()
     {
 //        printf("Thread %ld: compilation %d %s\n", m_thread, m_clientPid, m_str);
         printf("Thread %ld: compiling %d %d\n", m_thread, m_clientPid, m_argc);
-        usleep(1000000);
+        usleep(10000000);
         finalize();
     }
 
@@ -62,9 +63,9 @@ public:
         return pthread_create(&m_thread, NULL, CompilationThread::thread_func, (void*)this) == 0;
     }
 
-    int wait()
-    { 
-        return pthread_join(m_thread, NULL); 
+    bool wait()
+    {
+        return pthread_join(m_thread, NULL) == 0;
     }
 
     void finalize()
@@ -129,10 +130,13 @@ private:
     char *m_cwd;
     int m_argc;
     char **m_argv;
+
+    static int count;
 };
  
 #define BUF_SIZE 10240
 const int MAX_WAIT = 600;
+int CompilationThread::count = 0;
 
 void sigterm_handler(int sig) {
     printf("Stopping compilation server...\n");
@@ -167,6 +171,8 @@ int main(int argc, char **argv)
     compileThreads.reserve(16);
     while(true) {
         while(fgets(buf, BUF_SIZE, input)) {
+            if(strncmp(buf, "END", 3) == 0)
+                goto the_end;
             CompilationThread *thread = new CompilationThread;
             if(!thread->start(buf)) {
                 printf("Server: Failed to start compilation!\n");
@@ -180,7 +186,16 @@ int main(int argc, char **argv)
         freopen(getenv("CLANGSERVERPIPE"), "r", input);
         printf("Server: Reopened\n");
     }
-    
+the_end:
+
+    // Cleanup threads
+    for(int i=0; i<compileThreads.size(); ++i) {
+        if(!compileThreads[i]->wait()) {
+            fprintf(stderr, "Failed to join thread\n");
+            compileThreads[i]->finalize();
+        }
+        delete compileThreads[i];
+    }
     fclose(input);
     printf("Server stop\n");
     return 0;

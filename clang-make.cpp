@@ -110,9 +110,11 @@ int main(int argc, char **argv)
         if(res != 0) {
             fprintf(stderr, "%s failed (code %d)!\n", makecmd, res);
         }
-        usleep(5000000);
+        //usleep(5000000);
         // Shutdown clang-server
-        kill(serverpid, SIGTERM);
+        FILE *pipe = fopen(pipename, "w");
+        fprintf(pipe, "END\n");
+        fclose(pipe);
         // Remove pipe
         res = remove(pipename);
         if(res != 0) {
