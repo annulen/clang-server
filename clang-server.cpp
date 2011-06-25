@@ -73,8 +73,6 @@ int main(int argc, char **argv)
         perror("sem_open");
         return 2;
     }
-
-
     compileThreads.reserve(16);
     while(true) {
         while(fgets(buf, BUF_SIZE, input)) {
@@ -104,6 +102,8 @@ the_end:
         delete compileThreads[i];
     }
     fclose(input);
+    if(sem_unlink("/clang-server-thread-limit") == -1)
+        perror("sem_unlink");
     printf("Server stop\n");
     return 0;
 }
