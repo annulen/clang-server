@@ -37,6 +37,7 @@
 #define BUF_SIZE 10240
 const int MAX_WAIT = 600;
 int CompilationThread::count = 0;
+sem_t sem;
 
 void sigterm_handler(int sig) {
     printf("Stopping compilation server...\n");
@@ -58,7 +59,6 @@ int main(int argc, char **argv)
     char c;
     std::vector<CompilationThread*> compileThreads;
 
-
     //printf("CLANGSERVERPIPE=%s\n", getenv("CLANGSERVERPIPE"));
     printf("Server start\n");
     input = fopen(getenv("CLANGSERVERPIPE"), "r");
@@ -68,6 +68,9 @@ int main(int argc, char **argv)
     }
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
+    if (sem_init(&sem, 0, 3) == -1)
+    perror("sem_init");
+
     compileThreads.reserve(16);
     while(true) {
         while(fgets(buf, BUF_SIZE, input)) {

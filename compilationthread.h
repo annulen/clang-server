@@ -28,7 +28,10 @@
 #define COMPILATIONTHREAD_H
 
 #include <pthread.h>
+#include <semaphore.h>
 #include <cstdio>
+
+extern sem_t sem;
 
 class CompilationThread
 {
@@ -46,11 +49,14 @@ public:
     void run();
 
     bool start(char *str)          
-    { 
+    {
         if(!setStr(str)) {
             printf("Parsing error in %s", str);
             return false;
         }
+        printf("Thread waiting...\n");
+        sem_wait(&sem);
+        printf("Thread starting...\n");
         return pthread_create(&m_thread, NULL, CompilationThread::thread_func, (void*)this) == 0;
     }
 
@@ -61,6 +67,7 @@ public:
 
     void finalize();
 
+    static int count;
 private:
     CompilationThread(const CompilationThread& copy); // copy constructor denied
     bool setStr(char *str);
@@ -76,7 +83,6 @@ private:
     int m_argc;
     char **m_argv;
 
-    static int count;
 };
 
 #endif // COMPILATIONTHREAD_H

@@ -87,4 +87,5 @@ void CompilationThread::finalize()
     m_str = 0;
     delete [] m_argv;
     m_argv = 0;
+    sem_post(&sem);
 }
