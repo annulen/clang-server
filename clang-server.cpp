@@ -69,6 +69,7 @@ int main(int argc, char **argv)
     }
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
+    sem_unlink("/clang-server-thread-limit");
     if((sem = sem_open("/clang-server-thread-limit", O_CREAT | O_EXCL, 600, 3)) == SEM_FAILED) {
         perror("sem_open");
         return 2;
