@@ -31,7 +31,7 @@
 #include <semaphore.h>
 #include <cstdio>
 
-extern sem_t sem;
+extern sem_t *sem;
 
 class CompilationThread
 {
@@ -55,7 +55,7 @@ public:
             return false;
         }
         printf("Thread waiting...\n");
-        sem_wait(&sem);
+        sem_wait(sem);
         printf("Thread starting...\n");
         return pthread_create(&m_thread, NULL, CompilationThread::thread_func, (void*)this) == 0;
     }

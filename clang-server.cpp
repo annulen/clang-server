@@ -37,7 +37,7 @@
 #define BUF_SIZE 10240
 const int MAX_WAIT = 600;
 int CompilationThread::count = 0;
-sem_t sem;
+sem_t *sem;
 
 void sigterm_handler(int sig) {
     printf("Stopping compilation server...\n");
@@ -68,8 +68,11 @@ int main(int argc, char **argv)
     }
     signal(SIGTERM, sigterm_handler);
     signal(SIGSEGV, sigsegv_handler);
-    if (sem_init(&sem, 0, 3) == -1)
-    perror("sem_init");
+    if((sem = sem_open("/clang-server-thread-limit", O_CREAT | O_EXCL, 600, 3)) == SEM_FAILED) {
+        perror("sem_open");
+        return 2;
+    }
+
 
     compileThreads.reserve(16);
     while(true) {
